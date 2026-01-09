@@ -11,6 +11,7 @@ import GameTimeline from './GameTimeline';
 import StackSizeChart from './StackSizeChart';
 import GameStats from './GameStats';
 import { calculateWinProbabilities } from '../lib/poker-engine';
+import TopDownView from './poker/TopDownView';
 
 function CameraUpdater({ fov }: { fov: number }) {
   const { camera } = useThree();
@@ -39,6 +40,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [fov, setFov] = useState(35);
   const [zoom, setZoom] = useState(0.6);
+  const [viewMode, setViewMode] = useState<'3d' | '2d'>('3d');
   const [sceneReady, setSceneReady] = useState(false);
   const [winProbabilities, setWinProbabilities] = useState<(number | null)[]>([]);
   const [isCalculating, setIsCalculating] = useState(false);
@@ -268,7 +270,7 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
 
 
         {/* Persistent Loading Overlay - Fades out only when Scene is actually ready */}
-        {!sceneReady && (
+        {viewMode === '3d' && !sceneReady && (
           <div className="loading-overlay">
             <div className="flex flex-col items-center gap-4">
                 <div className="w-10 h-10 border-2 border-blue-500/20 border-t-blue-500 rounded-full animate-spin" />
@@ -280,18 +282,27 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
         )}
 
         <Suspense fallback={null}>
-          <Canvas shadows camera={{ position: [-9.43, 12.03, 26.47], fov: fov, zoom: 0.6 }}>
-            <CameraUpdater fov={fov} />
-            <PokerScene
+          {viewMode === '3d' ? (
+            <Canvas shadows camera={{ position: [-9.43, 12.03, 26.47], fov: fov, zoom: 0.6 }}>
+              <CameraUpdater fov={fov} />
+              <PokerScene
+                players={scenePlayers}
+                board={gameState.board}
+                pot={gameState.pot}
+                dealerIndex={gameState.dealerIndex}
+                zoomLevel={zoom}
+                onZoomChange={setZoom}
+                onSceneReady={() => setSceneReady(true)}
+              />
+            </Canvas>
+          ) : (
+            <TopDownView
               players={scenePlayers}
               board={gameState.board}
               pot={gameState.pot}
               dealerIndex={gameState.dealerIndex}
-              zoomLevel={zoom}
-              onZoomChange={setZoom}
-              onSceneReady={() => setSceneReady(true)}
             />
-          </Canvas>
+          )}
         </Suspense>
       </div>
 
@@ -414,6 +425,23 @@ export default function GameSimulator({ game, runId }: GameSimulatorProps) {
                   className="range-slider"
                   style={{ width: '60px', height: '4px' }}
                 />
+              </div>
+
+              <div className="w-px h-6 bg-white/10 shrink-0 lg-visible" />
+
+              <div className="flex items-center gap-2 p-1 bg-white/5 rounded-lg border border-white/5">
+                <button
+                  onClick={() => setViewMode('3d')}
+                  className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === '3d' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white'}`}
+                >
+                  3D
+                </button>
+                <button
+                  onClick={() => setViewMode('2d')}
+                  className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${viewMode === '2d' ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/20' : 'text-slate-400 hover:text-white'}`}
+                >
+                  2D
+                </button>
               </div>
 
               <div className="w-px h-6 bg-white/10 shrink-0 lg-visible" />
